@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sustainable Cloud & AI Cost Calculator</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* ========================
+           CSS VARIABLES & THEME
+           ======================== */
+        :root {
+            /* Dark Mode (Default) */
+            --bg-gradient: linear-gradient(135deg, #0f172a, #2e1065, #1e3a8a);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --input-bg: rgba(0, 0, 0, 0.2);
+            --input-border: rgba(255, 255, 255, 0.2);
+            --accent: #60a5fa;
+            --accent-hover: #3b82f6;
+            --highlight-bg: rgba(34, 197, 94, 0.2);
+            --highlight-border: #22c55e;
+            --chart-text: #e2e8f0;
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        body.light-mode {
+            /* Light Mode */
+            --bg-gradient: linear-gradient(135deg, #e0e7ff, #f3e8ff, #dbeafe);
+            --glass-bg: rgba(255, 255, 255, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --input-bg: rgba(255, 255, 255, 0.8);
+            --input-border: rgba(0, 0, 0, 0.1);
+            --accent: #4f46e5;
+            --accent-hover: #4338ca;
+            --highlight-bg: rgba(34, 197, 94, 0.3);
+            --highlight-border: #16a34a;
+            --chart-text: #334155;
+            --card-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+
+        /* ========================
+           GLOBAL STYLES
+           ======================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+
+        html, body {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.6;
+        }
+
+        /* Glassmorphism Class */
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            padding: 1.5rem;
+        }
+
+        /* ========================
+           LAYOUT
+           ======================== */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            background: -webkit-linear-gradient(45deg, #60a5fa, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+            flex: 1;
+            width: 100%;
+        }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 1.5rem; }
+        
+        /* Responsive Breakpoints */
+        @media (max-width: 900px) {
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 600px) {
+            header {
+                flex-direction: column;
+                gap: 0.75rem;
+                padding: 1rem;
+                text-align: center;
+            }
+            header h1 {
+                font-size: 1.1rem;
+                line-height: 1.4;
+            }
+            .container {
+                padding: 0 1rem;
+                margin: 1rem auto;
+                width: 100%;
+            }
+            .glass {
+                padding: 1.25rem 1rem;
+            }
+            .total-price {
+                font-size: 1.75rem;
+            }
+            h2 {
+                font-size: 1.1rem;
+            }
+            .price {
+                font-size: 1.25rem;
+            }
+            th, td {
+                padding: 0.75rem 0.5rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* ========================
+           COMPONENTS
+           ======================== */
+        /* Theme Toggle */
+        .theme-toggle {
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            color: var(--text-main);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .theme-toggle:hover { background: var(--glass-border); }
+
+        /* Typography */
+        h2 { font-size: 1.25rem; margin-bottom: 1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem; }
+        .text-sm { font-size: 0.875rem; color: var(--text-muted); }
+        .price { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+        .total-price { font-size: 2.5rem; font-weight: 700; color: #10b981; }
+
+        /* Form Elements */
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+        input, select, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 8px;
+            color: var(--text-main);
+            outline: none;
+            font-size: 1rem;
+        }
+        input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2); }
+        
+        /* Table */
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 1rem; border-bottom: 1px solid var(--glass-border); }
+        th { font-weight: 600; color: var(--text-muted); }
+        tr.cheapest { background: var(--highlight-bg); border-left: 4px solid var(--highlight-border); border-radius: 8px; }
+
+        /* AI Token Calculator */
+        textarea { resize: vertical; min-height: 100px; }
+        .energy-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+        .energy-green { background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e; }
+        .energy-yellow { background: rgba(234, 179, 8, 0.2); color: #eab308; border: 1px solid #eab308; }
+        .energy-red { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+
+        /* Optimization Tips */
+        .tips-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        .tip-card {
+            background: var(--input-bg);
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid var(--input-border);
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        .tip-card:hover { transform: translateY(-5px); border-color: var(--accent); }
+        .tip-icon { font-size: 1.5rem; margin-bottom: 0.5rem; display: block; }
+
+        /* Canvas wrappers */
+        .chart-container { position: relative; height: 250px; width: 100%; }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            border-top: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            margin-top: auto;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-up { animation: fadeIn 0.6s ease-out forwards; }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <header>
+        <h1>☁️ Cloud & AI Cost Optimizer</h1>
+        <button class="theme-toggle" id="themeToggle">☀️ Light Mode</button>
+    </header>
+
+    <div class="container">
+        
+        <!-- SECTION 1 & 2: Calculator & Selected Results -->
+        <div class="grid-2 animate-up">
+            <!-- Inputs -->
+            <div class="glass">
+                <h2>1. Cloud Parameters</h2>
+                <div class="form-group">
+                    <label>Provider</label>
+                    <select id="provider">
+                        <option value="AWS">Amazon Web Services (AWS)</option>
+                        <option value="Azure">Microsoft Azure</option>
+                        <option value="GCP">Google Cloud Platform (GCP)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Storage (GB)</label>
+                    <input type="number" id="storage" min="0" value="100">
+                </div>
+                <div class="form-group">
+                    <label>Compute (Hours)</label>
+                    <input type="number" id="compute" min="0" value="730"> <!-- 730h ~ 1 month -->
+                </div>
+                <div class="form-group">
+                    <label>Data Transfer (GB)</label>
+                    <input type="number" id="transfer" min="0" value="50">
+                </div>
+            </div>
+
+            <!-- Individual Result -->
+            <div class="glass" style="display: flex; flex-direction: column; justify-content: center;">
+                <h2>Selected Provider Cost (<span id="selectedProviderName">AWS</span>)</h2>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span>Storage Cost:</span> <span class="price">₹<span id="costStorage">0.00</span></span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span>Compute Cost:</span> <span class="price">₹<span id="costCompute">0.00</span></span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem;">
+                    <span>Transfer Cost:</span> <span class="price">₹<span id="costTransfer">0.00</span></span>
+                </div>
+                <div style="border-top: 1px solid var(--glass-border); padding-top: 1rem; text-align: center;">
+                    <div class="text-sm">Total Estimated Monthly Cost</div>
+                    <div class="total-price">₹<span id="costTotal">0.00</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: Comparison Table -->
+        <div class="glass animate-up" style="margin-bottom: 1.5rem;">
+            <h2>2. Cloud Provider Comparison</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Provider</th>
+                            <th>Storage Cost (₹)</th>
+                            <th>Compute Cost (₹)</th>
+                            <th>Transfer Cost (₹)</th>
+                            <th>Total Cost (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparisonTable">
+                        <!-- Filled via JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-sm" style="margin-top: 1rem; text-align: right;">* Highlighted row indicates the most cost-effective provider.</div>
+        </div>
+
+        <!-- SECTION 3: Charts -->
+        <div class="grid-3 animate-up">
+            <div class="glass">
+                <h2>Total Cost Comparison</h2>
+                <div class="chart-container">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+            <div class="glass">
+                <h2>Cost Distribution (<span id="pieProvider">AWS</span>)</h2>
+                <div class="chart-container">
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+            <div class="glass">
+                <h2>Scalability Index</h2>
+                <div class="chart-container">
+                    <canvas id="lineChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 4: AI Token Calculator -->
+        <div class="glass animate-up" style="margin-bottom: 1.5rem;">
+            <h2>3. AI Token & Energy Calculator</h2>
+            <div class="grid-2">
+                <div>
+                    <div class="form-group">
+                        <label>AI Prompt Text</label>
+                        <textarea id="aiPrompt" placeholder="Type your prompt here to estimate tokens and compute energy..."></textarea>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                    <div class="text-sm">Estimated Tokens</div>
+                    <div style="font-size: 3rem; font-weight: 700; line-height: 1;"><span id="tokenCount">0</span></div>
+                    <div id="energyBadge" class="energy-badge energy-green">Low Energy 🌱</div>
+                    <p class="text-sm" style="margin-top: 1rem; max-width: 80%;">
+                        Tokens are calculated as ~1.3 per word. Larger prompts consume more cloud compute and API budget.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 5: Optimization Tips -->
+        <div class="glass animate-up" style="margin-bottom: 1.5rem;">
+            <h2>4. Sustainability & Cost Optimization Tips</h2>
+            <div class="tips-grid">
+                <div class="tip-card">
+                    <span class="tip-icon">✂️</span>
+                    <h4>Reduce Prompt Length</h4>
+                    <span class="text-sm">Shorter prompts save tokens and execution time.</span>
+                </div>
+                <div class="tip-card">
+                    <span class="tip-icon">🧠</span>
+                    <h4>Use Smaller Models</h4>
+                    <span class="text-sm">Opt for smaller AI models for simple classification tasks.</span>
+                </div>
+                <div class="tip-card">
+                    <span class="tip-icon">💾</span>
+                    <h4>Cache Responses</h4>
+                    <span class="text-sm">Store frequent API responses to prevent redundant calls.</span>
+                </div>
+                <div class="tip-card">
+                    <span class="tip-icon">🛑</span>
+                    <h4>Avoid Repeated Calls</h4>
+                    <span class="text-sm">Implement debounce in your frontend applications.</span>
+                </div>
+                <div class="tip-card">
+                    <span class="tip-icon">📦</span>
+                    <h4>Use Batching</h4>
+                    <span class="text-sm">Send multiple inputs in a single API request if supported.</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>Made by <strong>Suraj Debnath</strong> | Built with HTML, CSS & Vanilla JS</p>
+    </footer>
+
+    <!-- ========================
+         JAVASCRIPT LOGIC
+         ======================== -->
+    <script>
+        // --- 1. Pricing Logic Data ---
+        const pricing = {
+            AWS: { storage: 2.0, compute: 5.0, transfer: 1.0, scale: 9 },
+            Azure: { storage: 1.8, compute: 5.5, transfer: 0.9, scale: 8 },
+            GCP: { storage: 1.9, compute: 4.8, transfer: 0.8, scale: 8 }
+        };
+
+        // --- 2. DOM Elements ---
+        const els = {
+            provider: document.getElementById('provider'),
+            storage: document.getElementById('storage'),
+            compute: document.getElementById('compute'),
+            transfer: document.getElementById('transfer'),
+            
+            selProvName: document.getElementById('selectedProviderName'),
+            costStorage: document.getElementById('costStorage'),
+            costCompute: document.getElementById('costCompute'),
+            costTransfer: document.getElementById('costTransfer'),
+            costTotal: document.getElementById('costTotal'),
+            
+            tableBody: document.getElementById('comparisonTable'),
+            pieProvider: document.getElementById('pieProvider'),
+            
+            aiPrompt: document.getElementById('aiPrompt'),
+            tokenCount: document.getElementById('tokenCount'),
+            energyBadge: document.getElementById('energyBadge'),
+            
+            themeToggle: document.getElementById('themeToggle')
+        };
+
+        // --- 3. Chart Instances ---
+        let barChart, pieChart, lineChart;
+
+        // --- 4. Initialization & Local Storage ---
+        function init() {
+            // Load saved data
+            const savedData = JSON.parse(localStorage.getItem('cloudCalcData'));
+            if (savedData) {
+                els.provider.value = savedData.provider || 'AWS';
+                els.storage.value = savedData.storage || 100;
+                els.compute.value = savedData.compute || 730;
+                els.transfer.value = savedData.transfer || 50;
+                els.aiPrompt.value = savedData.prompt || '';
+            }
+
+            // Load Theme
+            if(localStorage.getItem('theme') === 'light') {
+                document.body.classList.add('light-mode');
+                els.themeToggle.innerText = '🌙 Dark Mode';
+            }
+
+            initCharts();
+            calculateAll();
+            calculateTokens();
+
+            // Event Listeners
+            [els.provider, els.storage, els.compute, els.transfer].forEach(el => {
+                el.addEventListener('input', calculateAll);
+            });
+            els.aiPrompt.addEventListener('input', calculateTokens);
+            els.themeToggle.addEventListener('click', toggleTheme);
+        }
+
+        // --- 5. Core Calculation Logic ---
+        function calculateAll() {
+            const provider = els.provider.value;
+            const storage = parseFloat(els.storage.value) || 0;
+            const compute = parseFloat(els.compute.value) || 0;
+            const transfer = parseFloat(els.transfer.value) || 0;
+
+            // Save to localStorage
+            localStorage.setItem('cloudCalcData', JSON.stringify({
+                provider, storage, compute, transfer, prompt: els.aiPrompt.value
+            }));
+
+            const results = {};
+            let cheapestProvider = '';
+            let lowestTotal = Infinity;
+
+            // Calculate for all providers
+            Object.keys(pricing).forEach(p => {
+                const sCost = storage * pricing[p].storage;
+                const cCost = compute * pricing[p].compute;
+                const tCost = transfer * pricing[p].transfer;
+                const total = sCost + cCost + tCost;
+
+                results[p] = { sCost, cCost, tCost, total };
+
+                if (total < lowestTotal) {
+                    lowestTotal = total;
+                    cheapestProvider = p;
+                }
+            });
+
+            // Update Selected Provider UI
+            els.selProvName.innerText = provider;
+            els.pieProvider.innerText = provider;
+            els.costStorage.innerText = results[provider].sCost.toFixed(2);
+            els.costCompute.innerText = results[provider].cCost.toFixed(2);
+            els.costTransfer.innerText = results[provider].tCost.toFixed(2);
+            els.costTotal.innerText = results[provider].total.toFixed(2);
+
+            // Update Table UI
+            updateTable(results, cheapestProvider);
+
+            // Update Charts
+            updateCharts(results, provider);
+        }
+
+        // --- 6. Table Generation ---
+        function updateTable(results, cheapest) {
+            els.tableBody.innerHTML = '';
+            Object.keys(results).forEach(p => {
+                const isCheapest = p === cheapest;
+                const row = document.createElement('tr');
+                if (isCheapest) row.className = 'cheapest';
+                
+                row.innerHTML = `
+                    <td><strong>${p}</strong> ${isCheapest ? '⭐' : ''}</td>
+                    <td>₹${results[p].sCost.toFixed(2)}</td>
+                    <td>₹${results[p].cCost.toFixed(2)}</td>
+                    <td>₹${results[p].tCost.toFixed(2)}</td>
+                    <td><strong>₹${results[p].total.toFixed(2)}</strong></td>
+                `;
+                els.tableBody.appendChild(row);
+            });
+        }
+
+        // --- 7. AI Token Logic ---
+        function calculateTokens() {
+            const text = els.aiPrompt.value.trim();
+            
+            // Save prompt
+            const savedData = JSON.parse(localStorage.getItem('cloudCalcData')) || {};
+            savedData.prompt = text;
+            localStorage.setItem('cloudCalcData', JSON.stringify(savedData));
+
+            if (!text) {
+                els.tokenCount.innerText = "0";
+                setEnergyBadge(0);
+                return;
+            }
+
+            const words = text.split(/\s+/).length;
+            const tokens = Math.ceil(words * 1.3); // Approx logic requested
+            els.tokenCount.innerText = tokens;
+            setEnergyBadge(tokens);
+        }
+
+        function setEnergyBadge(tokens) {
+            els.energyBadge.className = 'energy-badge'; // reset
+            if (tokens < 50) {
+                els.energyBadge.classList.add('energy-green');
+                els.energyBadge.innerText = 'Low Energy 🌱';
+            } else if (tokens <= 150) {
+                els.energyBadge.classList.add('energy-yellow');
+                els.energyBadge.innerText = 'Medium Energy ⚡';
+            } else {
+                els.energyBadge.classList.add('energy-red');
+                els.energyBadge.innerText = 'High Energy 🔥';
+            }
+        }
+
+        // --- 8. Theme Toggle Logic ---
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            const isLight = document.body.classList.contains('light-mode');
+            els.themeToggle.innerText = isLight ? '🌙 Dark Mode' : '☀️ Light Mode';
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            
+            // Update chart colors dynamically based on CSS variables
+            updateChartColors();
+        }
+
+        // --- 9. Chart.js Implementation ---
+        function getChartTextColor() {
+            return getComputedStyle(document.body).getPropertyValue('--chart-text').trim() || '#e2e8f0';
+        }
+
+        function initCharts() {
+            Chart.defaults.color = getChartTextColor();
+            Chart.defaults.font.family = "'Inter', sans-serif";
+
+            // Bar Chart
+            const ctxBar = document.getElementById('barChart').getContext('2d');
+            barChart = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['AWS', 'Azure', 'GCP'],
+                    datasets: [{
+                        label: 'Total Cost (₹)',
+                        data: [0, 0, 0],
+                        backgroundColor: ['rgba(96, 165, 250, 0.7)', 'rgba(52, 211, 153, 0.7)', 'rgba(244, 114, 182, 0.7)'],
+                        borderColor: ['#60a5fa', '#34d399', '#f472b6'],
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Pie Chart
+            const ctxPie = document.getElementById('pieChart').getContext('2d');
+            pieChart = new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Storage', 'Compute', 'Transfer'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: ['#8b5cf6', '#3b82f6', '#10b981'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Line Chart (Scalability)
+            const ctxLine = document.getElementById('lineChart').getContext('2d');
+            lineChart = new Chart(ctxLine, {
+                type: 'line',
+                data: {
+                    labels: ['AWS', 'Azure', 'GCP'],
+                    datasets: [{
+                        label: 'Scalability Rating (out of 10)',
+                        data: [pricing.AWS.scale, pricing.Azure.scale, pricing.GCP.scale],
+                        borderColor: '#fbbf24',
+                        backgroundColor: 'rgba(251, 191, 36, 0.2)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { y: { min: 0, max: 10 } }
+                }
+            });
+        }
+
+        function updateCharts(results, provider) {
+            // Update Bar Chart
+            barChart.data.datasets[0].data = [results.AWS.total, results.Azure.total, results.GCP.total];
+            barChart.update();
+
+            // Update Pie Chart
+            pieChart.data.datasets[0].data = [results[provider].sCost, results[provider].cCost, results[provider].tCost];
+            pieChart.update();
+        }
+
+        function updateChartColors() {
+            const newColor = getChartTextColor();
+            Chart.defaults.color = newColor;
+            barChart.options.scales.x.ticks.color = newColor;
+            barChart.options.scales.y.ticks.color = newColor;
+            lineChart.options.scales.x.ticks.color = newColor;
+            lineChart.options.scales.y.ticks.color = newColor;
+            
+            barChart.update();
+            pieChart.update();
+            lineChart.update();
+        }
+
+        // --- Run on Load ---
+        window.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>
